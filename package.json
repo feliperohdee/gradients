@@ -1,0 +1,11 @@
+{
+    "dependencies": {
+        "js-combinatorics": "0.6.1",
+        "lodash": "^4.17.20",
+        "tailwindcss": "^2.0.2"
+    },
+    "scripts": {
+        "build": "node index.js > index.html",
+        "deploy": "aws s3 cp index.html s3://rohde-sites/site/gradients.html --acl public-read --cache-control max-age=86400 --profile rohde-sites"
+    }
+}
