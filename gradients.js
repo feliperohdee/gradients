@@ -50,11 +50,8 @@ module.exports = (args = {}) => {
 
             if (
                 (key === 'red' && shade === 300) ||
-                (key === 'red' && shade === 400) ||
                 (key === 'orange' && shade === 300) ||
-                (key === 'orange' && shade === 400) ||
                 (key === 'amber' && shade === 300) ||
-                (key === 'amber' && shade === 400) ||
                 (key === 'lime' && shade === 300) ||
                 (key === 'green' && shade === 300) ||
                 (key === 'blue' && shade === 300) ||

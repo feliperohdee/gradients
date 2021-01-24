@@ -20,9 +20,9 @@ exports.handler = async event => {
     } = event;
 
     let {
-        angle = '225',
-            filter = '',
-            operator = 'or'
+        angle = '135',
+        filter = '',
+        operator = 'or'
     } = queryStringParameters || {};
 
     angle = Number(angle);
@@ -44,15 +44,22 @@ exports.handler = async event => {
 
         result = result.filter(colors => {
             if (operator === 'and') {
-                return filterChunk.some(filter => {
-                    return filter.every(filter => {
-                        return colors[0].key === filter ||
-                            colors[1].key === filter;
-                    }) || filter.some(filter => {
+                if (filterChunk.length) {
+                    return filterChunk.some(filter => {
+                        return filter.every(filter => {
+                            return colors[0].key === filter ||
+                                colors[1].key === filter;
+                        }) || filter.some(filter => {
+                            return colors[0].key === filter &&
+                                colors[0].key === colors[1].key;
+                        });
+                    });
+                } else {
+                    return filter.some(filter => {
                         return colors[0].key === filter &&
                             colors[0].key === colors[1].key;
                     });
-                });
+                }
             }
 
             return filter.some(filter => {
@@ -104,7 +111,7 @@ exports.handler = async event => {
 (async () => {
     let result = await exports.handler({
         queryStringParameters: {
-            filter: 'red,amber,emerald,lime',
+            filter: 'red,orange',
             operator: 'and'
         }
     });
