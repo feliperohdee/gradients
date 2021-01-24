@@ -1,20 +1,9 @@
-const gradients = require('./gradients.json');
+const Combinatorics = require('./Combinatorics');
+const colors = require('./colors.json');
 const gradientsNofilter = require('./gradientsNoFilter.json');
 
-const chunk = array => {
-    return array.reduce((reduction, item1, index) => {
-            return reduction.concat(array.slice(index + 1)
-                .map(item2 => {
-                    return [item1, item2];
-                }));
-        }, [])
-        .filter(array => {
-            return array.length;
-        });
-};
-
 exports.handler = async event => {
-    let result = gradients;
+    let result = [];
     let {
         queryStringParameters
     } = event;
@@ -22,10 +11,13 @@ exports.handler = async event => {
     let {
         angle = '135',
         filter = '',
-        operator = 'or'
+        minShade = '100',
+        maxShade = '900'
     } = queryStringParameters || {};
 
     angle = Number(angle);
+    minShade = Number(minShade);
+    maxShade = Number(maxShade);
 
     if (isNaN(angle)) {
         angle = 0;
@@ -40,64 +32,62 @@ exports.handler = async event => {
                 return filter.trim();
             });
 
-        const filterChunk = operator === 'and' ? chunk(filter) : [];
+        let pickedColors = filter.reduce((reduction, filter) => {
+            return reduction.concat(colors[filter] || []);
+        }, []);
 
-        result = result.filter(colors => {
-            if (operator === 'and') {
-                if (filterChunk.length) {
-                    return filterChunk.some(filter => {
-                        return filter.every(filter => {
-                            return colors[0].key === filter ||
-                                colors[1].key === filter;
-                        }) || filter.some(filter => {
-                            return colors[0].key === filter &&
-                                colors[0].key === colors[1].key;
-                        });
-                    });
-                } else {
-                    return filter.some(filter => {
-                        return colors[0].key === filter &&
-                            colors[0].key === colors[1].key;
-                    });
-                }
+        pickedColors = pickedColors.filter(color => {
+            return color.shade >= minShade &&
+                color.shade <= maxShade;
+        });
+
+        let c;
+        let combinations = [];
+        let cmb = Combinatorics.bigCombination(pickedColors, 2);
+
+        while ((c = cmb.next())) {
+            const same = c[0].color === c[1].color;
+            const shadeDelta = Math.abs(c[0].shade - c[1].shade);
+
+            if (
+                same &&
+                shadeDelta <= 100
+            ) {
+                continue;
             }
 
-            return filter.some(filter => {
-                return colors[0].key === filter ||
-                    colors[1].key === filter;
-            });
-        });
+            combinations = combinations.concat([c]);
+        }
+
+        result = combinations;
     } else {
         result = gradientsNofilter;
     }
 
     result = result.map(colors => {
-            return {
-                angle,
-                key: `${colors[0].key}-${colors[1].key}-${colors[0].shade}-${colors[1].shade}`,
-                keys: colors[0].key === colors[1].key ? [
-                    colors[0].key
-                ] : [
-                    colors[0].key,
-                    colors[1].key
-                ],
-                stops: [{
-                    color: colors[0].color,
-                    offset: 0,
-                    opacity: 1,
-                    id: 1
-                }, {
-                    color: colors[1].color,
-                    offset: 1,
-                    opacity: 1,
-                    id: 2
-                }],
-                preview: `linear-gradient(${angle}deg, ${colors[0].color} 0%, ${colors[1].color} 100%)`
-            };
-        })
-        .sort((a, b) => {
-            return a.key > b.key ? 1 : -1;
-        });
+        return {
+            angle,
+            key: `${colors[0].color}-${colors[1].color}-${colors[0].shade}-${colors[1].shade}`,
+            colors: colors[0].color === colors[1].color ? [
+                colors[0].color
+            ] : [
+                colors[0].color,
+                colors[1].color
+            ],
+            stops: [{
+                color: colors[0].value,
+                offset: 0,
+                opacity: 1,
+                id: 1
+            }, {
+                color: colors[1].value,
+                offset: 1,
+                opacity: 1,
+                id: 2
+            }],
+            preview: `linear-gradient(${angle}deg, ${colors[0].value} 0%, ${colors[1].value} 100%)`
+        };
+    });
 
     return {
         body: JSON.stringify(result),
@@ -107,18 +97,3 @@ exports.handler = async event => {
         statusCode: 200
     };
 };
-
-(async () => {
-    let result = await exports.handler({
-        queryStringParameters: {
-            filter: 'red,orange',
-            operator: 'and'
-        }
-    });
-
-    result = JSON.parse(result.body);
-
-    console.log(result.map(r => {
-        return r.key;
-    }));
-})();
