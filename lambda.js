@@ -1,14 +1,16 @@
 const gradients = require('./gradients.json');
 const gradientsNofilter = require('./gradientsNoFilter.json');
 
-const chunk = (array, chunk = 2) => {
-    return array.reduce((c, v, i, a) => {
-        if (i + chunk <= a.length) {
-            c.push(a.slice(i, i + chunk));
-        }
-
-        return c;
-    }, []);
+const chunk = array => {
+    return array.reduce((reduction, item1, index) => {
+            return reduction.concat(array.slice(index + 1)
+                .map(item2 => {
+                    return [item1, item2];
+                }));
+        }, [])
+        .filter(array => {
+            return array.length;
+        });
 };
 
 exports.handler = async event => {
@@ -38,9 +40,7 @@ exports.handler = async event => {
                 return filter.trim();
             });
 
-        const filterChunk = operator === 'and' ? chunk(filter, 2) : [];
-
-        console.log(filterChunk);
+        const filterChunk = operator === 'and' ? chunk(filter) : [];
 
         result = result.filter(colors => {
             if (operator === 'and') {
@@ -65,29 +65,32 @@ exports.handler = async event => {
     }
 
     result = result.map(colors => {
-        return {
-            angle,
-            key: `${colors[0].key}-${colors[0].shade}-${colors[1].key}-${colors[1].shade}`,
-            keys: colors[0].key === colors[1].key ? [
-                colors[0].key
-            ] : [
-                colors[0].key,
-                colors[1].key
-            ],
-            stops: [{
-                color: colors[0].color,
-                offset: 0,
-                opacity: 1,
-                id: 1
-            }, {
-                color: colors[1].color,
-                offset: 1,
-                opacity: 1,
-                id: 2
-            }],
-            preview: `linear-gradient(${angle}deg, ${colors[0].color} 0%, ${colors[1].color} 100%)`
-        };
-    });
+            return {
+                angle,
+                key: `${colors[0].key}-${colors[1].key}-${colors[0].shade}-${colors[1].shade}`,
+                keys: colors[0].key === colors[1].key ? [
+                    colors[0].key
+                ] : [
+                    colors[0].key,
+                    colors[1].key
+                ],
+                stops: [{
+                    color: colors[0].color,
+                    offset: 0,
+                    opacity: 1,
+                    id: 1
+                }, {
+                    color: colors[1].color,
+                    offset: 1,
+                    opacity: 1,
+                    id: 2
+                }],
+                preview: `linear-gradient(${angle}deg, ${colors[0].color} 0%, ${colors[1].color} 100%)`
+            };
+        })
+        .sort((a, b) => {
+            return a.key > b.key ? 1 : -1;
+        });
 
     return {
         body: JSON.stringify(result),
@@ -101,12 +104,14 @@ exports.handler = async event => {
 (async () => {
     let result = await exports.handler({
         queryStringParameters: {
-            filter: 'red,orange,lime',
+            filter: 'red,amber,emerald,lime',
             operator: 'and'
         }
     });
 
     result = JSON.parse(result.body);
 
-    console.log(result);
+    console.log(result.map(r => {
+        return r.key;
+    }));
 })();

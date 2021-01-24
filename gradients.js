@@ -5,7 +5,7 @@ const Combinatorics = require('js-combinatorics');
 module.exports = (args = {}) => {
     const {
         allowSame = true,
-        maxColorDelta = 5,
+        maxColorDelta = Infinity,
         minShadeDeltaForSameColor = 100
     } = args;
 
